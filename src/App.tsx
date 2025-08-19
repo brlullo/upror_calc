@@ -139,17 +139,17 @@ export function App() {
 
         const inputs = {
 
-            construct_type_initial_MCGR: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.construct_type_initial, categoryOptions.construct_type_initial)[0]]), [1, 1]),
-            construct_type_initial_TGR: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.construct_type_initial, categoryOptions.construct_type_initial)[1]]), [1, 1]),
-            construct_type_initial_VEPTR: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.construct_type_initial, categoryOptions.construct_type_initial)[2]]), [1, 1]),
+            construct_type_initial_MCGR: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.construct_type_initial, inputInfo['construct_type_initial']['options'])[0]]), [1, 1]),
+            construct_type_initial_TGR: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.construct_type_initial, inputInfo['construct_type_initial']['options'])[1]]), [1, 1]),
+            construct_type_initial_VEPTR: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.construct_type_initial, inputInfo['construct_type_initial']['options'])[2]]), [1, 1]),
 
-            eos_type_Congenital: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.eos_type, categoryOptions.eos_type)[0]]), [1, 1]),
-            eos_type_Idiopathic: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.eos_type, categoryOptions.eos_type)[1]]), [1, 1]),
-            eos_type_Syndromic: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.eos_type, categoryOptions.eos_type)[2]]), [1, 1]),
-            eos_type_Neuromuscular: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.eos_type, categoryOptions.eos_type)[3]]), [1, 1]),
+            eos_type_Congenital: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.eos_type, inputInfo['eos_type']['options'])[0]]), [1, 1]),
+            eos_type_Idiopathic: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.eos_type, inputInfo['eos_type']['options'])[1]]), [1, 1]),
+            eos_type_Neuromuscular: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.eos_type, inputInfo['eos_type']['options'])[2]]), [1, 1]),
+            eos_type_Syndromic: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.eos_type, inputInfo['eos_type']['options'])[3]]), [1, 1]),
 
-            amb_status_preop_Ambulatory: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.amb_status_preop, categoryOptions.amb_status_preop)[0]]), [1, 1]),
-            amb_status_preop_Non_ambulatory: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.amb_status_preop, categoryOptions.amb_status_preop)[1]]), [1, 1]),
+            amb_status_preop_Ambulatory: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.amb_status_preop, inputInfo['amb_status_preop']['options'])[0]]), [1, 1]),
+            amb_status_preop_Non_ambulatory: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.amb_status_preop, inputInfo['amb_status_preop']['options'])[1]]), [1, 1]),
 
             age_at_insertion: new ort.Tensor("float32", new Float32Array([values.age_at_insertion]), [1, 1]),
             weight_pre: new ort.Tensor("float32", new Float32Array([values.weight_pre]), [1, 1]),
@@ -158,16 +158,16 @@ export function App() {
             minor_cobb_angle_pre: new ort.Tensor("float32", new Float32Array([values.minor_cobb_angle_pre]), [1, 1]),
             kyphosis_pre: new ort.Tensor("float32", new Float32Array([values.kyphosis_pre]), [1, 1]),
 
-            construct_side_initial_Bilateral: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.construct_side_initial, categoryOptions.construct_side_initial)[0]]), [1, 1]),
-            construct_side_initial_Unilateral: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.construct_side_initial, categoryOptions.construct_side_initial)[1]]), [1, 1]),
+            construct_side_initial_Bilateral: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.construct_side_initial, inputInfo['construct_side_initial']['options'])[0]]), [1, 1]),
+            construct_side_initial_Unilateral: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.construct_side_initial, inputInfo['construct_side_initial']['options'])[1]]), [1, 1]),
 
-            superior_attach_initial_Rib: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.superior_attach_initial, categoryOptions.superior_attach_initial)[0]]), [1, 1]),
-            superior_attach_initial_Spine: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.superior_attach_initial, categoryOptions.superior_attach_initial)[1]]), [1, 1]),
+            superior_attach_initial_Spine: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.superior_attach_initial, inputInfo['superior_attach_initial']['options'])[0]]), [1, 1]),
+            superior_attach_initial_Rib: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.superior_attach_initial, inputInfo['superior_attach_initial']['options'])[1]]), [1, 1]),
 
             num_superior_anchors_initial: new ort.Tensor("float32", new Float32Array([values.num_superior_anchors_initial]), [1, 1]),
 
-            inferior_attach_initial_Pelvis: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.inferior_attach_initial, categoryOptions.inferior_attach_initial)[0]]), [1, 1]),
-            inferior_attach_initial_Spine: new ort.Tensor("float32", new Float32Array(oneHotEncode(values.inferior_attach_initial, categoryOptions.inferior_attach_initial)[1]), [1, 1])
+            inferior_attach_initial_Spine: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.inferior_attach_initial, inputInfo['inferior_attach_initial']['options'])[0]]), [1, 1]),
+            inferior_attach_initial_Pelvis: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.inferior_attach_initial, inputInfo['inferior_attach_initial']['options'])[1]]), [1, 1])
         };
 
         console.log(inputs);
