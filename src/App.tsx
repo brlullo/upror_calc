@@ -243,7 +243,7 @@ export function App() {
             const probTensor = output["probabilities"];
             const probability = probTensor.data[1] as number; // assuming index 1 is 'UPROR'
 
-            setResult('Predicted UPROR Risk: ' + (probability * 100).toFixed(0) + '%');
+            setResult((probability * 100).toFixed(0) + '%');
 
         } catch (err) {
             console.error("Error running ONNX model:", err);
@@ -324,7 +324,7 @@ export function App() {
 
                                 <Button variant={"contained"} type={"submit"}>Calculate</Button>
 
-                                <Typography variant="h6" color="primary">{result}</Typography>
+                                <Typography variant="h6" color="primary">Predicted UPROR Risk: {result}</Typography>
 
                             </Stack>
 
