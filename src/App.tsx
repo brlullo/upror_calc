@@ -281,6 +281,7 @@ export function App() {
                                                         name={inputInfo[fieldID]['name']}
                                                         key={inputInfo[fieldID]['name']}
                                                         value={values[inputInfo[fieldID]['name']]}
+                                                        type={"number"}
                                                         onChange={handleChange}
                                                         onBlur={handleBlur}
                                                         error={touched[inputInfo[fieldID]['name']] && Boolean(errors[inputInfo[fieldID]['name']])}
