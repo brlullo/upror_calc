@@ -1,11 +1,44 @@
 
-import {useRef, useState} from "react";
-import { Formik, Field, Form } from "formik";
-import { TextField, Button, Grid, FormControlLabel, Checkbox, Box, Container, Stack, Typography, InputAdornment, MenuItem, FormControl, InputLabel, Select } from "@mui/material";
+import {useState} from "react";
+import { Formik, Form } from "formik";
+import { TextField, Button, Container, Stack, Typography, InputAdornment, MenuItem } from "@mui/material";
 import * as yup from "yup";
 import * as ort from "onnxruntime-web";
 
-const inputInfo = {
+/** 1) Literal unions for all field keys and categories */
+type InputKey =
+    | "age_at_insertion"
+    | "height_pre"
+    | "weight_pre"
+    | "eos_type"
+    | "amb_status_preop"
+    | "major_cobb_angle_pre"
+    | "minor_cobb_angle_pre"
+    | "kyphosis_pre"
+    | "construct_type_initial"
+    | "construct_side_initial"
+    | "superior_attach_initial"
+    | "num_superior_anchors_initial"
+    | "inferior_attach_initial";
+
+type CategoryKey = "Patient factors" | "Radiographic factors" | "Planned construct";
+
+/** 2) Field metadata types */
+type ContinuousField = {
+    type: "continuous";
+    label: string;
+    name: InputKey;
+    units: string;
+};
+type CategoricalField = {
+    type: "categorical";
+    label: string;
+    name: InputKey;
+    options: readonly string[];
+};
+type Field = ContinuousField | CategoricalField;
+
+const inputInfo: Record<InputKey, Field> = {
     'age_at_insertion': {
         'type': 'continuous',
         'label': 'Age at insertion',
@@ -28,13 +61,13 @@ const inputInfo = {
         'type': 'categorical',
         'label': 'EOS etiology',
         'name': 'eos_type',
-        'options': ['Congenital', 'Idiopathic', 'Neuromuscular', 'Syndromic'],
+        'options': ['Congenital', 'Idiopathic', 'Neuromuscular', 'Syndromic'] as const,
     },
     'amb_status_preop': {
         'type': 'categorical',
         'label': 'Ambulatory status',
         'name': 'amb_status_preop',
-        'options': ['Ambulatory', 'Non-ambulatory'],
+        'options': ['Ambulatory', 'Non-ambulatory'] as const,
     },
 
     'major_cobb_angle_pre': {
@@ -60,19 +93,19 @@ const inputInfo = {
         'type': 'categorical',
         'label': 'Initial construct type',
         'name': 'construct_type_initial',
-        'options': ['MCGR', 'TGR', 'VEPTR'],
+        'options': ['MCGR', 'TGR', 'VEPTR'] as const,
     },
     'construct_side_initial': {
         'type': 'categorical',
         'label': 'Initial construct laterality',
         'name': 'construct_side_initial',
-        'options': ['Bilateral', 'Unilateral'],
+        'options': ['Bilateral', 'Unilateral'] as const,
     },
     'superior_attach_initial': {
         'type': 'categorical',
         'label': 'Superior anchor site',
         'name': 'superior_attach_initial',
-        'options': ['Spine', 'Rib'],
+        'options': ['Spine', 'Rib'] as const,
     },
     'num_superior_anchors_initial': {
         'type': 'continuous',
@@ -84,15 +117,31 @@ const inputInfo = {
         'type': 'categorical',
         'label': 'Inferior anchor site',
         'name': 'inferior_attach_initial',
-        'options': ['Spine', 'Pelvis'],
+        'options': ['Spine', 'Pelvis'] as const,
     },
 };
 
-const inputCategories = {
+const inputCategories: Record<CategoryKey, readonly InputKey[]> = {
     'Patient factors': ['age_at_insertion', 'height_pre', 'weight_pre', 'eos_type', 'amb_status_preop'],
     'Radiographic factors': ['major_cobb_angle_pre', 'minor_cobb_angle_pre', 'kyphosis_pre'],
     'Planned construct': ['construct_type_initial', 'construct_side_initial', 'superior_attach_initial', 'num_superior_anchors_initial', 'inferior_attach_initial'],
 };
+
+/** 4) Form values type: numbers for continuous, strings for categorical.
+ *    (Allow '' to keep MUI TextField controlled for numbers before entry.) */
+type ContinuousKeys =
+    | "age_at_insertion"
+    | "height_pre"
+    | "weight_pre"
+    | "major_cobb_angle_pre"
+    | "minor_cobb_angle_pre"
+    | "kyphosis_pre"
+    | "num_superior_anchors_initial";
+type CategoricalKeys = Exclude<InputKey, ContinuousKeys>;
+
+type FormValues =
+    & { [K in ContinuousKeys]: number | "" }
+    & { [K in CategoricalKeys]: string };
 
 const validationSchema = yup.object({
     construct_type_initial: yup.string().required("Required"),
@@ -113,7 +162,7 @@ const validationSchema = yup.object({
 export function App() {
     const [result, setResult] = useState('');
 
-    const initialValues = {
+    const initialValues: FormValues = {
         construct_type_initial: '',
         eos_type: '',
         amb_status_preop: '',
@@ -129,45 +178,47 @@ export function App() {
         inferior_attach_initial: ''
     };
 
-    const oneHotEncode = (selectedValue, options) => {
+    const oneHotEncode = (selectedValue: string, options: readonly string[]) => {
         const encoding = new Array(options.length).fill(0);
         encoding[options.indexOf(selectedValue)] = 1;
         return encoding;
     };
 
-    const onSubmit = (values) => {
+    const onSubmit= (values: FormValues) => {
 
-        const inputs = {
+        const num = (v: number | "") => (v === "" ? 0 : v);
 
-            construct_type_initial_MCGR: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.construct_type_initial, inputInfo['construct_type_initial']['options'])[0]]), [1, 1]),
-            construct_type_initial_TGR: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.construct_type_initial, inputInfo['construct_type_initial']['options'])[1]]), [1, 1]),
-            construct_type_initial_VEPTR: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.construct_type_initial, inputInfo['construct_type_initial']['options'])[2]]), [1, 1]),
+        const inputs: Record<string, ort.Tensor> = {
 
-            eos_type_Congenital: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.eos_type, inputInfo['eos_type']['options'])[0]]), [1, 1]),
-            eos_type_Idiopathic: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.eos_type, inputInfo['eos_type']['options'])[1]]), [1, 1]),
-            eos_type_Neuromuscular: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.eos_type, inputInfo['eos_type']['options'])[2]]), [1, 1]),
-            eos_type_Syndromic: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.eos_type, inputInfo['eos_type']['options'])[3]]), [1, 1]),
+            construct_type_initial_MCGR: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.construct_type_initial, (inputInfo['construct_type_initial'] as CategoricalField)['options'])[0]]), [1, 1]),
+            construct_type_initial_TGR: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.construct_type_initial, (inputInfo['construct_type_initial'] as CategoricalField)['options'])[1]]), [1, 1]),
+            construct_type_initial_VEPTR: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.construct_type_initial, (inputInfo['construct_type_initial'] as CategoricalField)['options'])[2]]), [1, 1]),
 
-            amb_status_preop_Ambulatory: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.amb_status_preop, inputInfo['amb_status_preop']['options'])[0]]), [1, 1]),
-            amb_status_preop_Non_ambulatory: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.amb_status_preop, inputInfo['amb_status_preop']['options'])[1]]), [1, 1]),
+            eos_type_Congenital: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.eos_type, (inputInfo['eos_type'] as CategoricalField)['options'])[0]]), [1, 1]),
+            eos_type_Idiopathic: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.eos_type, (inputInfo['eos_type'] as CategoricalField)['options'])[1]]), [1, 1]),
+            eos_type_Neuromuscular: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.eos_type, (inputInfo['eos_type'] as CategoricalField)['options'])[2]]), [1, 1]),
+            eos_type_Syndromic: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.eos_type, (inputInfo['eos_type'] as CategoricalField)['options'])[3]]), [1, 1]),
 
-            age_at_insertion: new ort.Tensor("float32", new Float32Array([values.age_at_insertion]), [1, 1]),
-            weight_pre: new ort.Tensor("float32", new Float32Array([values.weight_pre]), [1, 1]),
-            height_pre: new ort.Tensor("float32", new Float32Array([values.height_pre]), [1, 1]),
-            major_cobb_angle_pre: new ort.Tensor("float32", new Float32Array([values.major_cobb_angle_pre]), [1, 1]),
-            minor_cobb_angle_pre: new ort.Tensor("float32", new Float32Array([values.minor_cobb_angle_pre]), [1, 1]),
-            kyphosis_pre: new ort.Tensor("float32", new Float32Array([values.kyphosis_pre]), [1, 1]),
+            amb_status_preop_Ambulatory: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.amb_status_preop, (inputInfo['amb_status_preop'] as CategoricalField)['options'])[0]]), [1, 1]),
+            amb_status_preop_Non_ambulatory: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.amb_status_preop, (inputInfo['amb_status_preop'] as CategoricalField)['options'])[1]]), [1, 1]),
 
-            construct_side_initial_Bilateral: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.construct_side_initial, inputInfo['construct_side_initial']['options'])[0]]), [1, 1]),
-            construct_side_initial_Unilateral: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.construct_side_initial, inputInfo['construct_side_initial']['options'])[1]]), [1, 1]),
+            age_at_insertion: new ort.Tensor("float32", new Float32Array([num(values.age_at_insertion)]), [1, 1]),
+            weight_pre: new ort.Tensor("float32", new Float32Array([num(values.weight_pre)]), [1, 1]),
+            height_pre: new ort.Tensor("float32", new Float32Array([num(values.height_pre)]), [1, 1]),
+            major_cobb_angle_pre: new ort.Tensor("float32", new Float32Array([num(values.major_cobb_angle_pre)]), [1, 1]),
+            minor_cobb_angle_pre: new ort.Tensor("float32", new Float32Array([num(values.minor_cobb_angle_pre)]), [1, 1]),
+            kyphosis_pre: new ort.Tensor("float32", new Float32Array([num(values.kyphosis_pre)]), [1, 1]),
 
-            superior_attach_initial_Spine: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.superior_attach_initial, inputInfo['superior_attach_initial']['options'])[0]]), [1, 1]),
-            superior_attach_initial_Rib: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.superior_attach_initial, inputInfo['superior_attach_initial']['options'])[1]]), [1, 1]),
+            construct_side_initial_Bilateral: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.construct_side_initial, (inputInfo['construct_side_initial'] as CategoricalField)['options'])[0]]), [1, 1]),
+            construct_side_initial_Unilateral: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.construct_side_initial, (inputInfo['construct_side_initial'] as CategoricalField)['options'])[1]]), [1, 1]),
 
-            num_superior_anchors_initial: new ort.Tensor("float32", new Float32Array([values.num_superior_anchors_initial]), [1, 1]),
+            superior_attach_initial_Spine: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.superior_attach_initial, (inputInfo['superior_attach_initial'] as CategoricalField)['options'])[0]]), [1, 1]),
+            superior_attach_initial_Rib: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.superior_attach_initial, (inputInfo['superior_attach_initial'] as CategoricalField)['options'])[1]]), [1, 1]),
 
-            inferior_attach_initial_Spine: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.inferior_attach_initial, inputInfo['inferior_attach_initial']['options'])[0]]), [1, 1]),
-            inferior_attach_initial_Pelvis: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.inferior_attach_initial, inputInfo['inferior_attach_initial']['options'])[1]]), [1, 1])
+            num_superior_anchors_initial: new ort.Tensor("float32", new Float32Array([num(values.num_superior_anchors_initial)]), [1, 1]),
+
+            inferior_attach_initial_Spine: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.inferior_attach_initial, (inputInfo['inferior_attach_initial'] as CategoricalField)['options'])[0]]), [1, 1]),
+            inferior_attach_initial_Pelvis: new ort.Tensor("float32", new Float32Array([oneHotEncode(values.inferior_attach_initial, (inputInfo['inferior_attach_initial'] as CategoricalField)['options'])[1]]), [1, 1])
         };
 
         console.log(inputs);
@@ -175,7 +226,7 @@ export function App() {
         runModel(inputs)
     };
 
-    const runModel = async (inputs) => {
+    const runModel= async (inputs: Record<string, ort.Tensor>) => {
 
         // WASM
         ort.env.wasm.wasmPaths = {
@@ -207,7 +258,7 @@ export function App() {
                 <Typography variant="subtitle1">This calculator uses a logistic regression machine learning model to
                     calculate an early-onset scoliosis (EOS) patient's risk of experiencing an unplanned return to the operating room (UPROR) over their treatment course.</Typography>
 
-                <Formik
+                <Formik<FormValues>
                     initialValues={initialValues}
                     validationSchema={validationSchema}
                     onSubmit={onSubmit}
@@ -218,10 +269,10 @@ export function App() {
 
                             <Stack spacing={1}>
 
-                                {Object.keys(inputCategories).map((category) => (
+                                {(Object.keys(inputCategories) as CategoryKey[]).map((category) => (
                                     <Stack key={category + '_stack'} spacing={1}>
                                         <Typography key={category + '_section'} variant={"subtitle2"}>{category}:</Typography>
-                                        {Object.values(inputCategories[category]).map((fieldID:string) => {
+                                        {Object.values(inputCategories[category]).map((fieldID) => {
 
                                             if (inputInfo[fieldID]['type'] === 'continuous') {
                                                 return (
