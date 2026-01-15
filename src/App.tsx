@@ -1,9 +1,82 @@
 
-import {useState} from "react";
+import React, {useState} from "react";
 import { Formik, Form } from "formik";
-import { TextField, Button, Container, Stack, Typography, InputAdornment, MenuItem } from "@mui/material";
+import { TextField, Button, Container, Stack, Typography, InputAdornment, MenuItem, Box, Card, CardContent, ThemeProvider, createTheme, Divider, Chip } from "@mui/material";
+import { Calculate, Person, Straighten, Build, Assessment } from '@mui/icons-material';
 import * as yup from "yup";
 import * as ort from "onnxruntime-web";
+
+// Custom medical theme with vibrant colors
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#2563eb', // Modern blue
+      light: '#60a5fa',
+      dark: '#1e40af',
+    },
+    secondary: {
+      main: '#8b5cf6', // Purple accent
+      light: '#a78bfa',
+      dark: '#6d28d9',
+    },
+    success: {
+      main: '#10b981',
+      light: '#34d399',
+    },
+    warning: {
+      main: '#f59e0b',
+      light: '#fbbf24',
+    },
+    error: {
+      main: '#ef4444',
+      light: '#f87171',
+    },
+    background: {
+      default: '#f8fafc',
+      paper: '#ffffff',
+    },
+  },
+  typography: {
+    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    h2: {
+      fontWeight: 700,
+      fontSize: '2.5rem',
+    },
+    h6: {
+      fontWeight: 600,
+    },
+    subtitle2: {
+      fontWeight: 600,
+      fontSize: '1rem',
+      textTransform: 'uppercase',
+      letterSpacing: '0.5px',
+    },
+  },
+  shape: {
+    borderRadius: 12,
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          fontWeight: 600,
+          fontSize: '1rem',
+          padding: '12px 32px',
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root': {
+            backgroundColor: '#ffffff',
+          },
+        },
+      },
+    },
+  },
+});
 
 /** 1) Literal unions for all field keys and categories */
 type InputKey =
@@ -161,6 +234,7 @@ const validationSchema = yup.object({
 
 export function App() {
     const [result, setResult] = useState('');
+    const [isCalculating, setIsCalculating] = useState(false);
 
     const initialValues: FormValues = {
         construct_type_initial: '',
@@ -178,6 +252,20 @@ export function App() {
         inferior_attach_initial: ''
     };
 
+    // Helper to determine risk level color and label
+    const getRiskLevel = (percentage: number) => {
+        if (percentage < 20) return { color: 'success', label: 'Low Risk', bgColor: '#d1fae5' };
+        if (percentage < 50) return { color: 'warning', label: 'Moderate Risk', bgColor: '#fef3c7' };
+        return { color: 'error', label: 'High Risk', bgColor: '#fee2e2' };
+    };
+
+    // Category icons
+    const categoryIcons: Record<CategoryKey, React.ReactElement> = {
+        'Patient factors': <Person sx={{ fontSize: 28, color: '#2563eb' }} />,
+        'Radiographic factors': <Straighten sx={{ fontSize: 28, color: '#8b5cf6' }} />,
+        'Planned construct': <Build sx={{ fontSize: 28, color: '#10b981' }} />,
+    };
+
     const oneHotEncode = (selectedValue: string, options: readonly string[]) => {
         const encoding = new Array(options.length).fill(0);
         encoding[options.indexOf(selectedValue)] = 1;
@@ -185,6 +273,8 @@ export function App() {
     };
 
     const onSubmit= (values: FormValues) => {
+        setIsCalculating(true);
+        setResult('');
 
         const num = (v: number | "") => (v === "" ? 0 : v);
 
@@ -247,93 +337,192 @@ export function App() {
 
         } catch (err) {
             console.error("Error running ONNX model:", err);
+            setResult('Error calculating risk');
+        } finally {
+            setIsCalculating(false);
         }
     };
 
     return (
-        <Container maxWidth={"md"}>
+        <ThemeProvider theme={theme}>
+            <Box sx={{
+                minHeight: '100vh',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                py: 4
+            }}>
+                <Container maxWidth="md">
+                    <Stack spacing={4}>
+                        {/* Header Card */}
+                        <Card elevation={8} sx={{
+                            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                            borderRadius: 3
+                        }}>
+                            <CardContent sx={{ p: 4 }}>
+                                <Stack spacing={2} alignItems="center" textAlign="center">
+                                    <Assessment sx={{ fontSize: 64, color: '#2563eb' }} />
+                                    <Typography variant="h2" color="primary" sx={{
+                                        background: 'linear-gradient(135deg, #2563eb 0%, #8b5cf6 100%)',
+                                        backgroundClip: 'text',
+                                        WebkitBackgroundClip: 'text',
+                                        WebkitTextFillColor: 'transparent',
+                                    }}>
+                                        EOS UPROR Calculator
+                                    </Typography>
+                                    <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 600 }}>
+                                        This calculator uses a logistic regression machine learning model to calculate an early-onset scoliosis (EOS) patient's risk of experiencing an unplanned return to the operating room (UPROR) over their treatment course.
+                                    </Typography>
+                                </Stack>
+                            </CardContent>
+                        </Card>
 
-            <Stack spacing={2}>
-                <Typography variant="h2">EOS UPROR Calculator</Typography>
-                <Typography variant="subtitle1">This calculator uses a logistic regression machine learning model to
-                    calculate an early-onset scoliosis (EOS) patient's risk of experiencing an unplanned return to the operating room (UPROR) over their treatment course.</Typography>
+                        <Formik<FormValues>
+                            initialValues={initialValues}
+                            validationSchema={validationSchema}
+                            onSubmit={onSubmit}
+                        >
+                            {({values, handleChange, handleBlur, errors, touched}) => (
+                                <Form>
+                                    <Stack spacing={3}>
+                                        {/* Input Sections */}
+                                        {(Object.keys(inputCategories) as CategoryKey[]).map((category) => (
+                                            <Card
+                                                key={category + '_card'}
+                                                elevation={6}
+                                                sx={{
+                                                    borderRadius: 3,
+                                                    transition: 'transform 0.2s, box-shadow 0.2s',
+                                                    '&:hover': {
+                                                        transform: 'translateY(-4px)',
+                                                        boxShadow: 12,
+                                                    }
+                                                }}
+                                            >
+                                                <CardContent sx={{ p: 3 }}>
+                                                    <Stack spacing={2.5}>
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                            {categoryIcons[category]}
+                                                            <Typography variant="subtitle2" color="text.primary">
+                                                                {category}
+                                                            </Typography>
+                                                        </Box>
+                                                        <Divider />
+                                                        <Stack spacing={2}>
+                                                            {Object.values(inputCategories[category]).map((fieldID) => {
+                                                                if (inputInfo[fieldID]['type'] === 'continuous') {
+                                                                    return (
+                                                                        <TextField
+                                                                            label={inputInfo[fieldID]['label']}
+                                                                            name={inputInfo[fieldID]['name']}
+                                                                            key={inputInfo[fieldID]['name']}
+                                                                            value={values[inputInfo[fieldID]['name']]}
+                                                                            type={"number"}
+                                                                            onChange={handleChange}
+                                                                            onBlur={handleBlur}
+                                                                            error={touched[inputInfo[fieldID]['name']] && Boolean(errors[inputInfo[fieldID]['name']])}
+                                                                            helperText={touched[inputInfo[fieldID]['name']] && errors[inputInfo[fieldID]['name']]}
+                                                                            fullWidth
+                                                                            size="medium"
+                                                                            slotProps={{
+                                                                                input: {
+                                                                                    endAdornment: <InputAdornment position={"end"}>{inputInfo[fieldID]['units']}</InputAdornment>,
+                                                                                },
+                                                                            }}
+                                                                        />
+                                                                    );
+                                                                }
 
-                <Formik<FormValues>
-                    initialValues={initialValues}
-                    validationSchema={validationSchema}
-                    onSubmit={onSubmit}
-                >
-                    {({values, handleChange, handleBlur, errors, touched}) => (
+                                                                if (inputInfo[fieldID]['type'] === 'categorical') {
+                                                                    return (
+                                                                        <TextField
+                                                                            label={inputInfo[fieldID]['label']}
+                                                                            name={inputInfo[fieldID]['name']}
+                                                                            key={inputInfo[fieldID]['name']}
+                                                                            value={values[inputInfo[fieldID]['name']]}
+                                                                            onChange={handleChange}
+                                                                            onBlur={handleBlur}
+                                                                            error={touched[inputInfo[fieldID]['name']] && Boolean(errors[inputInfo[fieldID]['name']])}
+                                                                            helperText={touched[inputInfo[fieldID]['name']] && errors[inputInfo[fieldID]['name']]}
+                                                                            select
+                                                                            fullWidth
+                                                                            size="medium"
+                                                                        >
+                                                                            {Object.values(inputInfo[fieldID]['options']).map((optionName) => (
+                                                                                <MenuItem key={optionName} value={optionName}>{optionName}</MenuItem>
+                                                                            ))}
+                                                                        </TextField>
+                                                                    );
+                                                                }
+                                                            })}
+                                                        </Stack>
+                                                    </Stack>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
 
-                        <Form>
+                                        {/* Calculate Button */}
+                                        <Button
+                                            variant="contained"
+                                            type="submit"
+                                            size="large"
+                                            disabled={isCalculating}
+                                            startIcon={<Calculate />}
+                                            sx={{
+                                                py: 1.5,
+                                                background: 'linear-gradient(135deg, #2563eb 0%, #8b5cf6 100%)',
+                                                '&:hover': {
+                                                    background: 'linear-gradient(135deg, #1e40af 0%, #6d28d9 100%)',
+                                                    transform: 'scale(1.02)',
+                                                },
+                                                transition: 'all 0.2s',
+                                                boxShadow: 4,
+                                            }}
+                                        >
+                                            {isCalculating ? 'Calculating...' : 'Calculate UPROR Risk'}
+                                        </Button>
 
-                            <Stack spacing={1}>
-
-                                {(Object.keys(inputCategories) as CategoryKey[]).map((category) => (
-                                    <Stack key={category + '_stack'} spacing={1}>
-                                        <Typography key={category + '_section'} variant={"subtitle2"}>{category}:</Typography>
-                                        {Object.values(inputCategories[category]).map((fieldID) => {
-
-                                            if (inputInfo[fieldID]['type'] === 'continuous') {
-                                                return (
-                                                    <TextField
-                                                        label={inputInfo[fieldID]['label']}
-                                                        name={inputInfo[fieldID]['name']}
-                                                        key={inputInfo[fieldID]['name']}
-                                                        value={values[inputInfo[fieldID]['name']]}
-                                                        type={"number"}
-                                                        onChange={handleChange}
-                                                        onBlur={handleBlur}
-                                                        error={touched[inputInfo[fieldID]['name']] && Boolean(errors[inputInfo[fieldID]['name']])}
-                                                        helperText={touched[inputInfo[fieldID]['name']] && errors[inputInfo[fieldID]['name']]}
-                                                        fullWidth
-                                                        size="small"
-                                                        slotProps={{
-                                                            input: {
-                                                                endAdornment: <InputAdornment position={"end"}>{inputInfo[fieldID]['units']}</InputAdornment>,
-                                                            },
-                                                        }}
-                                                    />
-                                                );
-                                            }
-
-                                            if (inputInfo[fieldID]['type'] === 'categorical') {
-                                                return (
-                                                    <TextField
-                                                        label={inputInfo[fieldID]['label']}
-                                                        name={inputInfo[fieldID]['name']}
-                                                        key={inputInfo[fieldID]['name']}
-                                                        value={values[inputInfo[fieldID]['name']]}
-                                                        onChange={handleChange}
-                                                        onBlur={handleBlur}
-                                                        error={touched[inputInfo[fieldID]['name']] && Boolean(errors[inputInfo[fieldID]['name']])}
-                                                        helperText={touched[inputInfo[fieldID]['name']] && errors[inputInfo[fieldID]['name']]}
-                                                        select
-                                                        fullWidth
-                                                        size="small"
-                                                    >
-                                                        {Object.values(inputInfo[fieldID]['options']).map((optionName) => (
-                                                            <MenuItem key={optionName} value={optionName}>{optionName}</MenuItem>
-                                                        ))}
-                                                    </TextField>
-                                                );
-                                            }
-                                        })}
+                                        {/* Results Display */}
+                                        {result && !isCalculating && (
+                                            <Card
+                                                elevation={8}
+                                                sx={{
+                                                    borderRadius: 3,
+                                                    background: result !== 'Error calculating risk'
+                                                        ? getRiskLevel(parseFloat(result)).bgColor
+                                                        : '#fee2e2',
+                                                    border: '2px solid',
+                                                    borderColor: result !== 'Error calculating risk'
+                                                        ? `${getRiskLevel(parseFloat(result)).color}.main`
+                                                        : 'error.main',
+                                                }}
+                                            >
+                                                <CardContent sx={{ p: 4 }}>
+                                                    <Stack spacing={2} alignItems="center">
+                                                        <Chip
+                                                            label={result !== 'Error calculating risk'
+                                                                ? getRiskLevel(parseFloat(result)).label
+                                                                : 'Error'}
+                                                            color={result !== 'Error calculating risk'
+                                                                ? getRiskLevel(parseFloat(result)).color as 'success' | 'warning' | 'error'
+                                                                : 'error'}
+                                                            sx={{ fontSize: '0.9rem', fontWeight: 600, px: 2, py: 0.5 }}
+                                                        />
+                                                        <Typography variant="h3" sx={{ fontWeight: 700, fontSize: '3rem' }}>
+                                                            {result}
+                                                        </Typography>
+                                                        <Typography variant="body1" color="text.secondary" fontWeight={500}>
+                                                            Predicted UPROR Risk
+                                                        </Typography>
+                                                    </Stack>
+                                                </CardContent>
+                                            </Card>
+                                        )}
                                     </Stack>
-                                ))}
-
-                                <Button variant={"contained"} type={"submit"}>Calculate</Button>
-
-                                <Typography variant="h6" color="primary">Predicted UPROR Risk: {result}</Typography>
-
-                            </Stack>
-
-                        </Form>
-                    )}
-                </Formik>
-
-            </Stack>
-
-        </Container>
+                                </Form>
+                            )}
+                        </Formik>
+                    </Stack>
+                </Container>
+            </Box>
+        </ThemeProvider>
     )
 }
