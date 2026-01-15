@@ -40,10 +40,14 @@ const theme = createTheme({
     fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
     h2: {
       fontWeight: 700,
-      fontSize: '2.5rem',
+      fontSize: 'clamp(1.75rem, 5vw, 2.5rem)',
     },
     h6: {
       fontWeight: 600,
+    },
+    body1: {
+      fontSize: '1.0625rem',
+      lineHeight: 1.6,
     },
     subtitle2: {
       fontWeight: 600,
@@ -61,8 +65,9 @@ const theme = createTheme({
         root: {
           textTransform: 'none',
           fontWeight: 600,
-          fontSize: '1rem',
-          padding: '12px 32px',
+          fontSize: '1.125rem',
+          padding: '16px 32px',
+          minHeight: '56px',
         },
       },
     },
@@ -71,7 +76,44 @@ const theme = createTheme({
         root: {
           '& .MuiOutlinedInput-root': {
             backgroundColor: '#ffffff',
+            minHeight: '56px',
           },
+        },
+      },
+    },
+    MuiInputBase: {
+      styleOverrides: {
+        root: {
+          fontSize: '1.125rem',
+        },
+        input: {
+          padding: '18px 14px',
+          fontSize: '1.125rem',
+          minHeight: '24px',
+        },
+      },
+    },
+    MuiInputLabel: {
+      styleOverrides: {
+        root: {
+          fontSize: '1.125rem',
+        },
+      },
+    },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          fontSize: '1.125rem',
+          minHeight: '56px',
+          padding: '14px 16px',
+        },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        select: {
+          padding: '18px 14px',
+          minHeight: '24px',
         },
       },
     },
@@ -261,9 +303,9 @@ export function App() {
 
     // Category icons
     const categoryIcons: Record<CategoryKey, React.ReactElement> = {
-        'Patient factors': <Person sx={{ fontSize: 28, color: '#2563eb' }} />,
-        'Radiographic factors': <Straighten sx={{ fontSize: 28, color: '#8b5cf6' }} />,
-        'Planned construct': <Build sx={{ fontSize: 28, color: '#10b981' }} />,
+        'Patient factors': <Person sx={{ fontSize: 36, color: '#2563eb' }} />,
+        'Radiographic factors': <Straighten sx={{ fontSize: 36, color: '#8b5cf6' }} />,
+        'Planned construct': <Build sx={{ fontSize: 36, color: '#10b981' }} />,
     };
 
     const oneHotEncode = (selectedValue: string, options: readonly string[]) => {
@@ -348,18 +390,19 @@ export function App() {
             <Box sx={{
                 minHeight: '100vh',
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                py: 4
+                py: { xs: 3, sm: 4, md: 5 },
+                px: { xs: 2, sm: 3 }
             }}>
                 <Container maxWidth="md">
-                    <Stack spacing={4}>
+                    <Stack spacing={5}>
                         {/* Header Card */}
                         <Card elevation={8} sx={{
                             background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
                             borderRadius: 3
                         }}>
                             <CardContent sx={{ p: 4 }}>
-                                <Stack spacing={2} alignItems="center" textAlign="center">
-                                    <Assessment sx={{ fontSize: 64, color: '#2563eb' }} />
+                                <Stack spacing={2.5} alignItems="center" textAlign="center">
+                                    <Assessment sx={{ fontSize: 72, color: '#2563eb' }} />
                                     <Typography variant="h2" color="primary" sx={{
                                         background: 'linear-gradient(135deg, #2563eb 0%, #8b5cf6 100%)',
                                         backgroundClip: 'text',
@@ -397,16 +440,16 @@ export function App() {
                                                     }
                                                 }}
                                             >
-                                                <CardContent sx={{ p: 3 }}>
-                                                    <Stack spacing={2.5}>
-                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                <CardContent sx={{ p: 4 }}>
+                                                    <Stack spacing={3}>
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                                             {categoryIcons[category]}
-                                                            <Typography variant="subtitle2" color="text.primary">
+                                                            <Typography variant="subtitle2" color="text.primary" sx={{ fontSize: '1.125rem' }}>
                                                                 {category}
                                                             </Typography>
                                                         </Box>
                                                         <Divider />
-                                                        <Stack spacing={2}>
+                                                        <Stack spacing={3}>
                                                             {Object.values(inputCategories[category]).map((fieldID) => {
                                                                 if (inputInfo[fieldID]['type'] === 'continuous') {
                                                                     return (
@@ -465,9 +508,12 @@ export function App() {
                                             type="submit"
                                             size="large"
                                             disabled={isCalculating}
-                                            startIcon={<Calculate />}
+                                            startIcon={<Calculate sx={{ fontSize: 28 }} />}
                                             sx={{
-                                                py: 1.5,
+                                                py: 2.5,
+                                                px: 4,
+                                                fontSize: '1.25rem',
+                                                minHeight: '64px',
                                                 background: 'linear-gradient(135deg, #2563eb 0%, #8b5cf6 100%)',
                                                 '&:hover': {
                                                     background: 'linear-gradient(135deg, #1e40af 0%, #6d28d9 100%)',
